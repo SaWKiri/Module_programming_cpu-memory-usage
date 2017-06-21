@@ -28,7 +28,7 @@ TODO
 #include <linux/types.h>
 #include <linux/timer.h>       /* Needed for timer */
 #include <linux/gpio.h>       // Required for the GPIO functions
-
+#include <asm/unistd.h>
 
 
 
@@ -83,19 +83,19 @@ static int precent = 0;
 */
 static int run_user_app(void)
 {
-  struct subprocess_info *sub_info;
+  //struct subprocess_info *sub_info;
 	///home/saw/Desktop/os2/project
 
   //  /home/saw/Desktop/AdvanceOS/lkp/project/a.out
 	// /home/pi/Desktop/project/a.out
-	char *argv[] = {"/home/saw/Desktop/AdvanceOS/lkp/project/a.out", NULL};
+	char *argv[] = {"/home/saw/Desktop/project/a.out", NULL};
   static char *envp[] = {"HOME=/","TERM=linux","PATH=/sbin:/bin:/usr/sbin:/usr/bin",NULL};
 
-  sub_info = call_usermodehelper_setup(argv[0],argv,envp,GFP_ATOMIC,NULL,NULL,NULL);
-  if(sub_info == NULL) return -1;
+  //sub_info = call_usermodehelper_setup(argv[0],argv,envp,GFP_ATOMIC,NULL,NULL,NULL);
+  //if(sub_info == NULL) return -1;
 
-  return call_usermodehelper_exec(sub_info,UMH_WAIT_PROC);
-
+  //return call_usermodehelper_exec(sub_info,UMH_WAIT_PROC);
+  return call_usermodehelper(argv[0],argv,envp,UMH_WAIT_EXEC);
 }
 
 //starts the timer
@@ -108,14 +108,11 @@ static void my_set_timer(struct timer_list * mtimer)
 // timer interrupt sevice routine - executes timer action
 void timerFun (unsigned long arg) {
 
-    int tmp,run =42;
+    int tmp;
     i++;
     tmp = i;
     printk (KERN_INFO "Called timer %d times\r\n", tmp);
 
-		printk(KERN_INFO "Running run_user_app!!");
-		run =  run_user_app();
-		printk(KERN_INFO "run user app return: %d",run);
 
     if(to_show_cpu == 0)
     {
@@ -183,18 +180,18 @@ void timerFun (unsigned long arg) {
 
 static struct attribute cpu_value = {
   .name = CPU_VALUE_ATTR_NAME,
-  .mode = 0666,
+  .mode = 0777,
 
 };
 
 static struct attribute memory_value = {
   .name = MEMORY_VALUE_ATT_NAME,
-  .mode = 0666,
+  .mode = 0777,
 };
 
 static struct attribute to_run_value = {
   .name = TO_RUN_VALUE_ATT_NAME,
-  .mode = 0666,
+  .mode = 0777,
 
 };
 
@@ -377,7 +374,7 @@ static struct notifier_block keylogger_nb =
 static int __init init_sys_status(void)
 {
   int err = -1;
-
+  int run = 42;
   //keybot notifier init
   register_keyboard_notifier(&keylogger_nb);
   printk(KERN_INFO "sys status module: Registering the keylogger module with the keyboard notifier list\n");
@@ -416,7 +413,6 @@ static int __init init_sys_status(void)
 
     err = 0;
 
-
   }
 
   //timer init
@@ -426,6 +422,11 @@ static int __init init_sys_status(void)
 
   my_set_timer(&myTimer);
   printk (KERN_INFO "sys status module:timer added. \n");
+
+  printk(KERN_INFO "sys status module: Running run_user_app!!");
+  run =  run_user_app();
+  printk(KERN_INFO "sys status module: run user app return: %d",run);
+
 
   printk(KERN_INFO "sys_status_module: init finished");
   printk(KERN_INFO "sys_status_module: loaded\n");

@@ -259,17 +259,18 @@ int main(int argc , char* argv[])
 
     memset(&buffer,0,1);
 
-    klogctl(10,"test",4);
-    cpu_usage_in_precentage = read_cpu();
-
-
-   write_cpu(cpu_usage_in_precentage);
 
 
     memory_usage_in_precentage = read_mem();
 
 
     write_memory(memory_usage_in_precentage);
+
+    cpu_usage_in_precentage = read_cpu();
+
+
+   write_cpu(cpu_usage_in_precentage);
+
 
     sleep(1);
 
