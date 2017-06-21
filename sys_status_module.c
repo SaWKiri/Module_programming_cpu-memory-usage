@@ -6,8 +6,7 @@
 
 /*
 TODO
-  add led and button
-  see if all work together ???
+  add  button
 
 */
 #include <linux/module.h>
@@ -57,6 +56,23 @@ static bool ledOn6 = 0;
 static unsigned int gpioLED13 = 13;
 static bool ledOn13 = 0;
 
+static unsigned int gpioButton = 115;   ///< hard coding the button gpio for this example to P9_27 (GPIO115)
+static unsigned int irqNumber;
+static unsigned int numberPresses = 0;  //for information, store the number of Button presses
+
+/*
+*
+* irq setup for Button
+*
+*/
+
+static irq_handler_t irq_handler(unsigned int irq, void *dev_id, struct pt_regs *regs){
+
+	 to_show_cpu = !to_show_cpu;           //switching between cpu and memory display of the led
+	 printk(KERN_INFO "GPIO_TEST: Interrupt! (button state is %d)\n", gpio_get_value(gpioButton));
+   numberPresses++;                         // Global counter, will be outputted when the module is unloaded
+   return (irq_handler_t) IRQ_HANDLED;      // Announce that the IRQ has been handled correctly
+}
 /*
 * timer setup
 */
@@ -85,7 +101,6 @@ static int run_user_app(void)
 {
   //struct subprocess_info *sub_info;
 	///home/saw/Desktop/os2/project
-
   //  /home/saw/Desktop/AdvanceOS/lkp/project/a.out
 	// /home/pi/Desktop/project/a.out
 	char *argv[] = {"/home/saw/Desktop/project/a.out", NULL};
@@ -121,8 +136,8 @@ void timerFun (unsigned long arg) {
     }
     else
     {
-      precent = memory;
-	  printk(KERN_INFO "sys status module: show memory");
+    	precent = memory;
+	  	printk(KERN_INFO "sys status module: show memory");
     }
 
     //calculating how much led to turn on base on precentage
@@ -397,6 +412,21 @@ static int __init init_sys_status(void)
   gpio_direction_output(gpioLED13, 0);
 	printk(KERN_INFO "sys status module: gpio led have been added.");
 
+  gpio_request(gpioButton, "button");       // Set up the gpioButton
+  gpio_direction_input(gpioButton);        // Set the button GPIO to be an input
+  gpio_set_debounce(gpioButton, 200);      // Debounce the button with a delay of 200ms
+  //gpio_export(gpioButton, false);          // Causes gpio115 to appear in /sys/class/gpio
+
+  irqNumber = gpio_to_irq(gpioButton);
+   printk(KERN_INFO "GPIO_TEST: The button is mapped to IRQ: %d\n", irqNumber);
+
+   // This next call requests an interrupt line
+   result = request_irq(irqNumber,             // The interrupt number requested
+                        (irq_handler_t) irq_handler, // The pointer to the handler function below
+                        IRQF_TRIGGER_RISING,   // Interrupt on rising edge (button press, not release)
+                        "ebb_gpio_handler",    // Used in /proc/interrupts to identify the owner
+                        NULL);                 // The *dev_id for shared interrupt lines, NULL is okay
+
   mykobj = kzalloc(sizeof(*mykobj),GFP_KERNEL);
   if(mykobj)
   {
@@ -460,6 +490,9 @@ static void __exit cleanup_sys_status(void)
   gpio_free(gpioLED13);
 	printk(KERN_INFO "sys status module: removed leds");
 
+  gpio_free(gpioButton);
+  printk(KERN_INFO "sys status module: removed Button");
+
   //free timer
   if(!del_timer(&myTimer))
   {
@@ -470,7 +503,6 @@ static void __exit cleanup_sys_status(void)
 	  printk(KERN_INFO "Timer removed");
   }
   printk(KERN_INFO "sys_status_module unloaded and finished\n");
-
 
 
 }
