@@ -64,8 +64,8 @@ static unsigned int numberPresses = 0;  //for information, store the number of B
 * timer setup
 */
 /* setup timer */
-struct timer_list myTimer;
-int i;
+struct timer_list myTimer; //the struct of the timer setup
+int i; //counting how many times the timer callback function have been called
 
 
 //sysfs entry declartion
@@ -76,8 +76,13 @@ static struct kobject *mykobj;
 static int memory =  0;
 static int cpu = 0;
 static int to_run = 0;
-static bool to_show_cpu = 0;
+
+/*
+* variable for inner control
+*/
+static bool to_show_cpu = 0; //0 - showing cpu precent on the led, 1- showing the memory usage on the led
 static int precent = 0;
+static bool onoff  = false; // set all led off or on (number of led on by precent)
 
 
 /*
@@ -86,12 +91,23 @@ static int precent = 0;
 *
 */
 
-static irq_handler_t irq_handler(unsigned int irq, void *dev_id, struct pt_regs *regs){
+static irq_handler_t irq_handler(unsigned int irq, void *dev_id, struct pt_regs *regs)
+{
+	if( to_run == 1)
+	{
+		to_run == 0;
+		onoff = true;
 
-	 to_show_cpu = !to_show_cpu;           //switching between cpu and memory display of the led
-	 printk(KERN_INFO "GPIO_TEST: Interrupt! (button state is %d)\n", gpio_get_value(gpioButton));
-     numberPresses++;                         // Global counter, will be outputted when the module is unloaded
-   return (irq_handler_t) IRQ_HANDLED;      // Announce that the IRQ has been handled correctly
+		run_user_app();
+	}
+	else
+	{
+		to_run = 1; //stopping user app
+		onoff= false; //turn off all led
+	}
+	printk(KERN_INFO "System status module: GPIO_TEST: Interrupt! (button state is %d)\n", gpio_get_value(gpioButton));
+  numberPresses++;                         // Global counter, will be outputted when the module is unloaded
+  return (irq_handler_t) IRQ_HANDLED;      // Announce that the IRQ has been handled correctly
 }
 
 /*
@@ -102,11 +118,11 @@ static irq_handler_t irq_handler(unsigned int irq, void *dev_id, struct pt_regs 
 static int run_user_app(void)
 {
   //struct subprocess_info *sub_info;
-	// /home/saw/Desktop/os2/project
+	// /home/saw/Desktop/project/a.out
   //  /home/saw/Desktop/AdvanceOS/lkp/project/a.out
 	// /home/pi/Desktop/project/a.out
 	// /home/pi/Desktop/project
-	char *argv[] = {"/home/pi/Desktop/project/a.out", NULL};
+	char *argv[] = {"/home/saw/Desktop/project/a.out", NULL}; //the path of the user program and its arguments
   static char *envp[] = {"HOME=/","TERM=linux","PATH=/sbin:/bin:/usr/sbin:/usr/bin",NULL};
 
   //sub_info = call_usermodehelper_setup(argv[0],argv,envp,GFP_ATOMIC,NULL,NULL,NULL);
@@ -119,8 +135,8 @@ static int run_user_app(void)
 //starts the timer
 static void my_set_timer(struct timer_list * mtimer)
 {
-	 mtimer->expires = jiffies + (HZ*SECONDS_COUNT);
-    add_timer (mtimer); /* setup the timer again */
+	 mtimer->expires = jiffies + (HZ*SECONDS_COUNT);//setting up when the timer callback will be called
+   add_timer (mtimer); /* setup the timer again */
 }
 
 // timer interrupt sevice routine - executes timer action
@@ -129,90 +145,94 @@ void timerFun (unsigned long arg) {
     int tmp;
     i++;
     tmp = i;
-    printk (KERN_INFO "Called timer %d times\r\n", tmp);
+    printk (KERN_INFO "System status module: Called timer %d times\r\n", tmp);
 
 
     if(to_show_cpu == 0)
     {
       precent = cpu;
-	    printk(KERN_INFO "sys status module: show cpu");
+	    printk(KERN_INFO "System status module: show cpu");
     }
     else
     {
     	precent = memory;
-	  	printk(KERN_INFO "sys status module: show memory");
+	  	printk(KERN_INFO "System status module: show memory");
     }
 
     //calculating how much led to turn on base on precentage
-      if(precent <= 25)
-      {
-		printk(KERN_INFO "sys status module: gpio27 on");
-        ledOn27 = false;
-        //led on
-        gpio_set_value(gpioLED27, ledOn27);
-        //led off
-        gpio_set_value(gpioLED5, true);gpio_set_value(gpioLED6, true);gpio_set_value(gpioLED13, true);
-      }
-      else if( precent > 25 && precent <= 50)
-      {
-		printk(KERN_INFO "sys status module: gpio27 and gpio5 on");
-        ledOn27 = false;
-        ledOn5 = false;
-        //led on
-        gpio_set_value(gpioLED27, ledOn27);gpio_set_value(gpioLED5, ledOn5);
-        //led off
-        gpio_set_value(gpioLED6, true);gpio_set_value(gpioLED13, true);
-      }
-      else if( precent > 50 && precent <= 75)
-      {
-		printk(KERN_INFO "sys status module: gpio27 & gpio5 & gpio6 on");
-        ledOn27 = false;
-        ledOn5 = false;
-        ledOn6 = false;
-        //led on
-        gpio_set_value(gpioLED27, ledOn27);gpio_set_value(gpioLED5, ledOn5);gpio_set_value(gpioLED6, ledOn6);
-        //led off
-        gpio_set_value(gpioLED13, true);
-      }
-      else if( precent > 75 && precent <= 100)
-      {
-		   printk(KERN_INFO "sys status module: all gpio led on!");
-        ledOn27 = false;
-        ledOn5 = false;
-        ledOn6 = false;
-        ledOn13 = false;
-        //led on
-        gpio_set_value(gpioLED27, ledOn27);
-        gpio_set_value(gpioLED5, ledOn5);
-        gpio_set_value(gpioLED6, ledOn6);
-        gpio_set_value(gpioLED13, ledOn13);
-      }
+    if(precent <= 25)
+    {
+		   printk(KERN_INFO "System status module: gpio27 on");
+       ledOn27 = false;
 
+       gpio_set_value(gpioLED27, ledOn27);//led on
 
+       gpio_set_value(gpioLED5, true);gpio_set_value(gpioLED6, true);gpio_set_value(gpioLED13, true);//led off
+    }
+    else if( precent > 25 && precent <= 50)
+    {
+			printk(KERN_INFO "System status module: gpio27 and gpio5 on");
+      ledOn27 = false;
+      ledOn5 = false;
+      //led on
+      gpio_set_value(gpioLED27, ledOn27);gpio_set_value(gpioLED5, ledOn5);
+      //led off
+      gpio_set_value(gpioLED6, true);gpio_set_value(gpioLED13, true);
+    }
+    else if( precent > 50 && precent <= 75)
+    {
+			printk(KERN_INFO "System status module: gpio27 & gpio5 & gpio6 on");
+      ledOn27 = false;
+      ledOn5 = false;
+      ledOn6 = false;
+      //led on
+      gpio_set_value(gpioLED27, ledOn27);gpio_set_value(gpioLED5, ledOn5);gpio_set_value(gpioLED6, ledOn6);
+      //led off
+      gpio_set_value(gpioLED13, true);
+    }
+    else if( precent > 75 && precent <= 100)
+    {
+			printk(KERN_INFO "System status module: all gpio led on!");
+      ledOn27 = false;
+      ledOn5 = false;
+      ledOn6 = false;
+      ledOn13 = false;
+      //led on
+      gpio_set_value(gpioLED27, ledOn27);
+      gpio_set_value(gpioLED5, ledOn5);
+      gpio_set_value(gpioLED6, ledOn6);
+      gpio_set_value(gpioLED13, ledOn13);
+    }
 
-    my_set_timer(&myTimer);
+    my_set_timer(&myTimer); //inserting timer again to timer_list to be exec again
 
 }
 
 
-
+/*
+* attribute struct for the sub "files" to be shown in sysfs entry
+*
+*/
 static struct attribute cpu_value = {
   .name = CPU_VALUE_ATTR_NAME,
-  .mode = 0777,
+  .mode = 0666, //permission all can read and write
 
 };
 
 static struct attribute memory_value = {
   .name = MEMORY_VALUE_ATT_NAME,
-  .mode = 0777,
+  .mode = 0666,//permission all can read and write
 };
 
 static struct attribute to_run_value = {
   .name = TO_RUN_VALUE_ATT_NAME,
-  .mode = 0777,
+  .mode = 0666,//permission all can read and write
 
 };
 
+/*
+* inserting all attribute to array for sysfs entry
+*/
 static struct attribute *my_attrs[] = {
   &cpu_value,
   &memory_value,
@@ -268,7 +288,7 @@ static ssize_t store(struct kobject *kobj,struct attribute *attr,const char *buf
     int i=0;
     i=sscanf(buff,"%d \n",&cpu);
     //by convention return number of byte store
-    printk(KERN_INFO "Sys status module: store to cpu %d vars\n",i);
+    printk(KERN_INFO "System status module: store to cpu %d vars\n",i);
     return sizeof(int);
   }
 
@@ -359,7 +379,7 @@ int keylogger_notify(struct notifier_block *nblock, unsigned long code, void *_p
               if(keymap[param->value] == keymap[25])
               {
                 to_show_cpu = !to_show_cpu;
-                printk(KERN_INFO "P has been pressed");
+                printk(KERN_INFO "System status module: P has been pressed");
               }
                 //printk(KERN_INFO "%s \n", keymap[param->value]);
             }
@@ -368,7 +388,7 @@ int keylogger_notify(struct notifier_block *nblock, unsigned long code, void *_p
               if(keymapShiftActivated[param->value] == keymapShiftActivated[25])
               {
                 to_show_cpu = !to_show_cpu;
-                printk(KERN_INFO "P has been pressed");
+                printk(KERN_INFO "System status module: P has been pressed");
               }
                 //printk(KERN_INFO "%s \n", keymapShiftActivated[param->value]);
             }
@@ -393,10 +413,10 @@ static int __init init_sys_status(void)
 {
   int err = -1;
   int run = 42;
-  int result =42;
+  int result = 42;
   //keybot notifier init
   register_keyboard_notifier(&keylogger_nb);
-  printk(KERN_INFO "sys status module: Registering the keylogger module with the keyboard notifier list\n");
+  printk(KERN_INFO "System status module: Registering the keylogger module with the keyboard notifier list\n");
   sema_init(&sem, 1);
 
 
@@ -414,7 +434,7 @@ static int __init init_sys_status(void)
 
   gpio_request(gpioLED13,"red");
   gpio_direction_output(gpioLED13, 0);
-	printk(KERN_INFO "sys status module: gpio led have been added.");
+	printk(KERN_INFO "System status module: gpio led have been added.");
 
   gpio_request(gpioButton, "button");       // Set up the gpioButton
   gpio_direction_input(gpioButton);        // Set the button GPIO to be an input
@@ -422,7 +442,7 @@ static int __init init_sys_status(void)
   //gpio_export(gpioButton, false);          // Causes gpio115 to appear in /sys/class/gpio
 
   irqNumber = gpio_to_irq(gpioButton);
-   printk(KERN_INFO "GPIO_TEST: The button is mapped to IRQ: %d\n", irqNumber);
+   printk(KERN_INFO "System status module: GPIO_TEST: The button is mapped to IRQ: %d\n", irqNumber);
 
    // This next call requests an interrupt line
    result = request_irq(irqNumber,             // The interrupt number requested
@@ -440,7 +460,7 @@ static int __init init_sys_status(void)
     if(kobject_add(mykobj,NULL,"%s",STATUS_OBJECT_NAME))
     {
       err = -1;
-      printk(KERN_INFO "sys status module: kobject_add() faild\n");
+      printk(KERN_INFO "System status module: kobject_add() faild\n");
       kobject_put(mykobj);
       mykobj = NULL;
     }
@@ -455,15 +475,15 @@ static int __init init_sys_status(void)
   myTimer.data = 0;
 
   my_set_timer(&myTimer);
-  printk (KERN_INFO "sys status module:timer added. \n");
+  printk (KERN_INFO "System status module: timer added. \n");
 
-  //printk(KERN_INFO "sys status module: Running run_user_app!!");
-  //run =  run_user_app();
-  //printk(KERN_INFO "sys status module: run user app return: %d",run);
+  printk(KERN_INFO "System status module: Running run_user_app!!");
+  run =  run_user_app();
+  printk(KERN_INFO "System status module: run user app return: %d",run);
 
 
-  printk(KERN_INFO "sys_status_module: init finished");
-  printk(KERN_INFO "sys_status_module: loaded\n");
+  printk(KERN_INFO "System status module: init finished");
+  printk(KERN_INFO "System status module: loaded\n");
   return 0;
 
 }
@@ -473,9 +493,9 @@ static int __init init_sys_status(void)
 */
 static void __exit cleanup_sys_status(void)
 {
-  printk(KERN_INFO "sys_status_module: exit started");
+  printk(KERN_INFO "System status module: exit started");
   unregister_keyboard_notifier(&keylogger_nb);
-  printk(KERN_INFO "Unregistered the keylogger module \n");
+  printk(KERN_INFO "System status module: Unregistered the keylogger module \n");
 
   if(mykobj)
   {
@@ -492,21 +512,21 @@ static void __exit cleanup_sys_status(void)
   gpio_free(gpioLED5);
   gpio_free(gpioLED6);
   gpio_free(gpioLED13);
-	printk(KERN_INFO "sys status module: removed leds");
+	printk(KERN_INFO "System status module: removed leds");
 
   gpio_free(gpioButton);
-  printk(KERN_INFO "sys status module: removed Button");
+  printk(KERN_INFO "System status module: removed Button");
 
   //free timer
   if(!del_timer(&myTimer))
   {
-	  printk(KERN_INFO "Couldn't remove timer");
+	  printk(KERN_INFO "System status module: Couldn't remove timer");
   }
   else
   {
-	  printk(KERN_INFO "Timer removed");
+	  printk(KERN_INFO "System status module: Timer removed");
   }
-  printk(KERN_INFO "sys_status_module unloaded and finished\n");
+  printk(KERN_INFO "System status module: unloaded and finished\n");
 
 
 }
@@ -532,4 +552,4 @@ MODULE_DESCRIPTION(DRIVER_DESC);//what does this module do
 *currently unsued other than for documentation
 */
 
-MODULE_SUPPORTED_DEVICE("Rasspebry pi 3");
+MODULE_SUPPORTED_DEVICE("Rasspebry pi 3 , 4 leds and 1 button");
