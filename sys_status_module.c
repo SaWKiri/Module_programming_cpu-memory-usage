@@ -28,7 +28,7 @@ TODO
 #include <linux/timer.h>       /* Needed for timer */
 #include <linux/gpio.h>       // Required for the GPIO functions
 #include <linux/interrupt.h> // for irq
-
+#include <linux/delay.h>
 
 
 #define DRIVER_AUTHOR "Oron Swissa and nerya yona"
@@ -85,30 +85,6 @@ static int precent = 0;
 static bool onoff  = false; // set all led off or on (number of led on by precent)
 
 
-/*
-*
-* irq setup for Button
-*
-*/
-
-static irq_handler_t irq_handler(unsigned int irq, void *dev_id, struct pt_regs *regs)
-{
-	if( to_run == 1)
-	{
-		to_run == 0;
-		onoff = true;
-
-		run_user_app();
-	}
-	else
-	{
-		to_run = 1; //stopping user app
-		onoff= false; //turn off all led
-	}
-	printk(KERN_INFO "System status module: GPIO_TEST: Interrupt! (button state is %d)\n", gpio_get_value(gpioButton));
-  numberPresses++;                         // Global counter, will be outputted when the module is unloaded
-  return (irq_handler_t) IRQ_HANDLED;      // Announce that the IRQ has been handled correctly
-}
 
 /*
 * running user application from kernel space
@@ -122,7 +98,7 @@ static int run_user_app(void)
   //  /home/saw/Desktop/AdvanceOS/lkp/project/a.out
 	// /home/pi/Desktop/project/a.out
 	// /home/pi/Desktop/project
-	char *argv[] = {"/home/saw/Desktop/project/a.out", NULL}; //the path of the user program and its arguments
+	char *argv[] = {"/home/saw/Desktop/project/readinfo", NULL}; //the path of the user program and its arguments
   static char *envp[] = {"HOME=/","TERM=linux","PATH=/sbin:/bin:/usr/sbin:/usr/bin",NULL};
 
   //sub_info = call_usermodehelper_setup(argv[0],argv,envp,GFP_ATOMIC,NULL,NULL,NULL);
@@ -159,50 +135,58 @@ void timerFun (unsigned long arg) {
 	  	printk(KERN_INFO "System status module: show memory");
     }
 
-    //calculating how much led to turn on base on precentage
-    if(precent <= 25)
-    {
-		   printk(KERN_INFO "System status module: gpio27 on");
-       ledOn27 = false;
+		if(onoff == false)
+		{
+			gpio_set_value(gpioLED27, true);
+			gpio_set_value(gpioLED5, true);gpio_set_value(gpioLED6, true);gpio_set_value(gpioLED13, true);
+		}
+		else
+		{
+	    //calculating how much led to turn on base on precentage
+	    if(precent <= 25)
+	    {
+			   printk(KERN_INFO "System status module: gpio27 on");
+	       ledOn27 = false;
 
-       gpio_set_value(gpioLED27, ledOn27);//led on
+	       gpio_set_value(gpioLED27, ledOn27);//led on
 
-       gpio_set_value(gpioLED5, true);gpio_set_value(gpioLED6, true);gpio_set_value(gpioLED13, true);//led off
-    }
-    else if( precent > 25 && precent <= 50)
-    {
-			printk(KERN_INFO "System status module: gpio27 and gpio5 on");
-      ledOn27 = false;
-      ledOn5 = false;
-      //led on
-      gpio_set_value(gpioLED27, ledOn27);gpio_set_value(gpioLED5, ledOn5);
-      //led off
-      gpio_set_value(gpioLED6, true);gpio_set_value(gpioLED13, true);
-    }
-    else if( precent > 50 && precent <= 75)
-    {
-			printk(KERN_INFO "System status module: gpio27 & gpio5 & gpio6 on");
-      ledOn27 = false;
-      ledOn5 = false;
-      ledOn6 = false;
-      //led on
-      gpio_set_value(gpioLED27, ledOn27);gpio_set_value(gpioLED5, ledOn5);gpio_set_value(gpioLED6, ledOn6);
-      //led off
-      gpio_set_value(gpioLED13, true);
-    }
-    else if( precent > 75 && precent <= 100)
-    {
-			printk(KERN_INFO "System status module: all gpio led on!");
-      ledOn27 = false;
-      ledOn5 = false;
-      ledOn6 = false;
-      ledOn13 = false;
-      //led on
-      gpio_set_value(gpioLED27, ledOn27);
-      gpio_set_value(gpioLED5, ledOn5);
-      gpio_set_value(gpioLED6, ledOn6);
-      gpio_set_value(gpioLED13, ledOn13);
-    }
+	       gpio_set_value(gpioLED5, true);gpio_set_value(gpioLED6, true);gpio_set_value(gpioLED13, true);//led off
+	    }
+	    else if( precent > 25 && precent <= 50)
+	    {
+				printk(KERN_INFO "System status module: gpio27 and gpio5 on");
+	      ledOn27 = false;
+	      ledOn5 = false;
+	      //led on
+	      gpio_set_value(gpioLED27, ledOn27);gpio_set_value(gpioLED5, ledOn5);
+	      //led off
+	      gpio_set_value(gpioLED6, true);gpio_set_value(gpioLED13, true);
+	    }
+	    else if( precent > 50 && precent <= 75)
+	    {
+				printk(KERN_INFO "System status module: gpio27 & gpio5 & gpio6 on");
+	      ledOn27 = false;
+	      ledOn5 = false;
+	      ledOn6 = false;
+	      //led on
+	      gpio_set_value(gpioLED27, ledOn27);gpio_set_value(gpioLED5, ledOn5);gpio_set_value(gpioLED6, ledOn6);
+	      //led off
+	      gpio_set_value(gpioLED13, true);
+	    }
+	    else if( precent > 75 && precent <= 100)
+	    {
+				printk(KERN_INFO "System status module: all gpio led on!");
+	      ledOn27 = false;
+	      ledOn5 = false;
+	      ledOn6 = false;
+	      ledOn13 = false;
+	      //led on
+	      gpio_set_value(gpioLED27, ledOn27);
+	      gpio_set_value(gpioLED5, ledOn5);
+	      gpio_set_value(gpioLED6, ledOn6);
+	      gpio_set_value(gpioLED13, ledOn13);
+	    }
+		}
 
     my_set_timer(&myTimer); //inserting timer again to timer_list to be exec again
 
@@ -404,6 +388,31 @@ static struct notifier_block keylogger_nb =
     .notifier_call = keylogger_notify
 };
 
+/*
+*
+* irq setup for Button
+*
+*/
+
+static irq_handler_t irq_handler(unsigned int irq, void *dev_id, struct pt_regs *regs)
+{
+	// if to_run = 1 turning activated user app and allowing all led to be turn on
+	if( to_run == 1)
+	{
+		to_run = 0;
+		onoff = true;
+		run_user_app();
+	}
+	else
+	{
+		to_run = 1; //stopping user app
+		onoff= false; //turn off all led
+	}
+	printk(KERN_INFO "System status module: Interrupt! (button state is %d)\n", gpio_get_value(gpioButton));
+  numberPresses++;                         // Global counter, will be outputted when the module is unloaded
+  return (irq_handler_t) IRQ_HANDLED;      // Announce that the IRQ has been handled correctly
+}
+
 
 
 /*
@@ -412,7 +421,6 @@ static struct notifier_block keylogger_nb =
 static int __init init_sys_status(void)
 {
   int err = -1;
-  int run = 42;
   int result = 42;
   //keybot notifier init
   register_keyboard_notifier(&keylogger_nb);
@@ -477,9 +485,9 @@ static int __init init_sys_status(void)
   my_set_timer(&myTimer);
   printk (KERN_INFO "System status module: timer added. \n");
 
-  printk(KERN_INFO "System status module: Running run_user_app!!");
-  run =  run_user_app();
-  printk(KERN_INFO "System status module: run user app return: %d",run);
+  //printk(KERN_INFO "System status module: Running run_user_app!!");
+  //run =  run_user_app();
+  //printk(KERN_INFO "System status module: run user app return: %d",run);
 
 
   printk(KERN_INFO "System status module: init finished");
@@ -497,7 +505,11 @@ static void __exit cleanup_sys_status(void)
   unregister_keyboard_notifier(&keylogger_nb);
   printk(KERN_INFO "System status module: Unregistered the keylogger module \n");
 
-  if(mykobj)
+	to_run = 1; //stopping user app
+	msleep(2000);//making sure that the user app will be stopped
+	printk(KERN_INFO "System status module: user app stopped \n");
+
+	if(mykobj)
   {
     kobject_put(mykobj);
     kfree(mykobj);
