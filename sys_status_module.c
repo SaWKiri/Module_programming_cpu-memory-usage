@@ -386,8 +386,31 @@ static struct notifier_block keylogger_nb =
 *
 */
 
+// function to prevent mechanical bouncing of the button
+static unsigned char debounce_button(void){
+
+
+static unsigned long old_jiffies = 0; //last time we entered the function and return was true
+
+	unsigned long diff = jiffies - old_jiffies; // time delta (in jiffies) before now and last time return was true
+
+	if(diff < 20){ //the delta may be different for mechanical prefs of the button.
+		return 0;
+
+	}
+
+	 old_jiffies = jiffies; //uptadte the time
+
+	return 1;
+}
+
 static irq_handler_t irq_handler(unsigned int irq, void *dev_id, struct pt_regs *regs)
 {
+	//preventing button debounce
+	if(debounce_button()== 0){
+		return (irq_handler_t) IRQ_HANDLED; //inform the system that we handled the interrupt
+	}
+
 	// if to_run = 1  running user app to read and write to sysfs
 	if( to_run == 1)
 	{
