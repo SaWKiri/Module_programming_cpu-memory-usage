@@ -1,4 +1,4 @@
-MODULE = SYSFS_entry
+MODULE = sys_status_module
 
 obj-m += sys_status_module.o
 
@@ -12,8 +12,12 @@ all: readinfo
 readinfo: readinfo.c
 		$(CC) $(CFLAGS-y) -o readinfo readinfo.c
 
-
+install:
+		sudo insmod $(MODULE).ko
+remove:
+		sudo rmmod sys_status_module
 
 clean:
 	make -C /lib/modules/$(shell uname -r)/build M=$(PWD) clean
 	$(RM) readinfo
+	sudo rmmod sys_status_module

