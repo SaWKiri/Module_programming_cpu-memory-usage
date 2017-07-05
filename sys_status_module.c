@@ -4,42 +4,32 @@
 *
 */
 
-/*
-TODO
-  add  button
-
-*/
 #include <linux/module.h>
 #include <linux/errno.h>
 #include <linux/kernel.h>
 #include <linux/jiffies.h>
-#include <linux/fs.h>
-#include <linux/string.h>
 #include <linux/slab.h>
 #include <linux/kobject.h>
 #include <linux/sysfs.h>
-#include <linux/module.h>
 #include <linux/printk.h>
-#include <linux/kobject.h>
 #include <linux/init.h>
 #include <linux/keyboard.h>
-#include <linux/semaphore.h>
-#include <linux/types.h>
+#include <linux/semaphore.h>	 /* needed for keyboard nnotifier - using a semaphore*/
 #include <linux/timer.h>       /* Needed for timer */
-#include <linux/gpio.h>       // Required for the GPIO functions
-#include <linux/interrupt.h> // for irq
-#include <linux/delay.h>
+#include <linux/gpio.h>        /* Required for the GPIO functions*/
+#include <linux/interrupt.h>   /* for irq */
+#include <linux/delay.h>	     /* for msleep */
 
 
 #define DRIVER_AUTHOR "Oron Swissa and nerya yona"
-#define DRIVER_DESC "Course Project - System status Led"
+#define DRIVER_DESC "Course Project - System status Led on Rasspebry pi 3"
 
 #define CPU_VALUE_ATTR_NAME "cpu"
 #define MEMORY_VALUE_ATT_NAME "memory"
 #define TO_RUN_VALUE_ATT_NAME "to_run"
 #define STATUS_OBJECT_NAME "sys_status_module"
 
-#define SECONDS_COUNT 5
+#define SECONDS_COUNT 3
 
 /*
 * leds and button config
@@ -63,13 +53,15 @@ static unsigned int numberPresses = 0;  //for information, store the number of B
 /*
 * timer setup
 */
+
 /* setup timer */
 struct timer_list myTimer; //the struct of the timer setup
-int i; //counting how many times the timer callback function have been called
+int i;                     //counting how many times the timer callback function have been called
 
 
-//sysfs entry declartion
+/*sysfs entry kobject declartion*/
 static struct kobject *mykobj;
+
 /*
 * the attribute that will be shown in the sysfs
 */
@@ -83,7 +75,6 @@ static int to_run = 0;
 static bool to_show_cpu = 0; //0 - showing cpu precent on the led, 1- showing the memory usage on the led
 static int precent = 0;
 static bool onoff  = false; // set all led off or on (number of led on by precent)
-
 
 
 /*
@@ -101,21 +92,21 @@ static int run_user_app(void)
 	char *argv[] = {"/home/saw/Desktop/project/readinfo", NULL}; //the path of the user program and its arguments
   static char *envp[] = {"HOME=/","TERM=linux","PATH=/sbin:/bin:/usr/sbin:/usr/bin",NULL};
 
-  //sub_info = call_usermodehelper_setup(argv[0],argv,envp,GFP_ATOMIC,NULL,NULL,NULL);
-  //if(sub_info == NULL) return -1;
-
-  //return call_usermodehelper_exec(sub_info,UMH_WAIT_PROC);
   return call_usermodehelper(argv[0],argv,envp,UMH_WAIT_EXEC);
 }
 
-//starts the timer
+/*
+* Function to starts the timer
+*/
 static void my_set_timer(struct timer_list * mtimer)
 {
 	 mtimer->expires = jiffies + (HZ*SECONDS_COUNT);//setting up when the timer callback will be called
    add_timer (mtimer); /* setup the timer again */
 }
 
-// timer interrupt sevice routine - executes timer action
+/*
+* timer interrupt sevice routine - executes timer action
+*/
 void timerFun (unsigned long arg) {
 
     int tmp;
@@ -123,7 +114,7 @@ void timerFun (unsigned long arg) {
     tmp = i;
     printk (KERN_INFO "System status module: Called timer %d times\r\n", tmp);
 
-
+		//choosing what precentage to show, cpu or memory
     if(to_show_cpu == 0)
     {
       precent = cpu;
@@ -135,6 +126,7 @@ void timerFun (unsigned long arg) {
 	  	printk(KERN_INFO "System status module: show memory");
     }
 
+		//if onoff is false the "display" is off -> all led off.
 		if(onoff == false)
 		{
 			gpio_set_value(gpioLED27, true);
@@ -396,16 +388,15 @@ static struct notifier_block keylogger_nb =
 
 static irq_handler_t irq_handler(unsigned int irq, void *dev_id, struct pt_regs *regs)
 {
-	// if to_run = 1 turning activated user app and allowing all led to be turn on
+	// if to_run = 1  running user app to read and write to sysfs
 	if( to_run == 1)
 	{
 		to_run = 0;
 		onoff = true;
-		run_user_app();
 	}
 	else
 	{
-		to_run = 1; //stopping user app
+		to_run = 1; //stopping user app from read/write to sysfs
 		onoff= false; //turn off all led
 	}
 	printk(KERN_INFO "System status module: Interrupt! (button state is %d)\n", gpio_get_value(gpioButton));
@@ -485,9 +476,9 @@ static int __init init_sys_status(void)
   my_set_timer(&myTimer);
   printk (KERN_INFO "System status module: timer added. \n");
 
-  //printk(KERN_INFO "System status module: Running run_user_app!!");
-  //run =  run_user_app();
-  //printk(KERN_INFO "System status module: run user app return: %d",run);
+  printk(KERN_INFO "System status module: Running run_user_app!!");
+  run =  run_user_app();
+  printk(KERN_INFO "System status module: run user app return: %d",run);
 
 
   printk(KERN_INFO "System status module: init finished");
@@ -505,7 +496,7 @@ static void __exit cleanup_sys_status(void)
   unregister_keyboard_notifier(&keylogger_nb);
   printk(KERN_INFO "System status module: Unregistered the keylogger module \n");
 
-	to_run = 1; //stopping user app
+	to_run = 2; //stopping and exiting user app
 	msleep(2000);//making sure that the user app will be stopped
 	printk(KERN_INFO "System status module: user app stopped \n");
 

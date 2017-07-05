@@ -241,7 +241,7 @@ int main(int argc , char* argv[])
   /* variable to hold the system status read from /proc*/
   double cpu_usage_in_precentage = 0;
   double memory_usage_in_precentage = 0;
-  int to_run = 0;
+  int to_run = 0;//if to_run = 0: run and write info to sysfa, to_run == 1: run but dont read/write info, otherwise program end.
   int fd;
   char buffer =  0 ;
 
@@ -259,23 +259,23 @@ int main(int argc , char* argv[])
 
     memset(&buffer,0,1);
 
+    if(to_run != 1){
+
+      memory_usage_in_precentage = read_mem();
 
 
-    memory_usage_in_precentage = read_mem();
+      write_memory(memory_usage_in_precentage);
+
+      cpu_usage_in_precentage = read_cpu();
 
 
-    write_memory(memory_usage_in_precentage);
+     write_cpu(cpu_usage_in_precentage);
 
-    cpu_usage_in_precentage = read_cpu();
-
-
-   write_cpu(cpu_usage_in_precentage);
-
-
+   }
     sleep(2);
 
 
-  }while(to_run == 0);
+  }while(to_run == 0 || to_run == 1);
 
 return SUCCESS;
 }
