@@ -1,7 +1,22 @@
 /*
+* File name: sys_status_module
 *
-* Advance OS 2 project - oron swissa nerya yona
+* Contents description:
+* In this file you will finde the Module source
+* code, this module extened the linux kernel by adding a display of cpu or memory usage displaid by 4 leds
+* that is connected by the gpio pin of the respberry pi 3 , changing the led to display cpu/memory is
+* done by a Button that also connected to the gpio pins.
+* 4 leds need to be connected to gpio pin 27, 5, 6, 13, and the Button to pin 16, on how to cennect the leds and Button and also
+* how to install this module see user guid manual.
 *
+* When the module is loaded to the linux kernel ,the module initialize the gpio pin that he require for the leds and buuton.
+* The module initialize a kobject for the sysfs entry to allow data to be sent from user space to kernel space and vice versa for
+* the user app helper, the user app calculating the cpu/memory from /proc/stat then sending it to the module.
+* The module is also registering in the keyboard driver to log key pressed , if the key 'p' is pressed the
+* module will change the led to display cpu/memory.
+*
+* Authers: oron swissa, neriya yona
+* Date: 2.8.2017
 */
 
 #include <linux/module.h>
@@ -180,7 +195,7 @@ void timerFun (unsigned long arg) {
 	    }
 		}
 
-    my_set_timer(&myTimer); //inserting timer again to timer_list to be exec again
+    my_set_timer(&myTimer); //inserting timer again to timer_list to be called again
 
 }
 
@@ -407,7 +422,7 @@ static unsigned long old_jiffies = 0; //last time we entered the function and re
 static irq_handler_t irq_handler(unsigned int irq, void *dev_id, struct pt_regs *regs)
 {
 	//preventing button debounce
-	if(debounce_button()== 0){
+	if(debounce_button() == 0){
 		return (irq_handler_t) IRQ_HANDLED; //inform the system that we handled the interrupt
 	}
 
