@@ -1,5 +1,5 @@
 /*
-* File name: sys_status_module
+* File name: sys_status_module.c
 *
 * Contents description:
 * In this file you will finde the Module source
@@ -153,20 +153,25 @@ void timerFun (unsigned long arg) {
 	    if(precent <= 25)
 	    {
 			   printk(KERN_INFO "System status module: gpio27 on");
-	       ledOn27 = false;
 
-	       gpio_set_value(gpioLED27, ledOn27);//led on
+				 ledOn27 = false;
+				 //led on
+	       gpio_set_value(gpioLED27, ledOn27);
 
-	       gpio_set_value(gpioLED5, true);gpio_set_value(gpioLED6, true);gpio_set_value(gpioLED13, true);//led off
+				 //led off
+	       gpio_set_value(gpioLED5, true);gpio_set_value(gpioLED6, true);gpio_set_value(gpioLED13, true);
 	    }
 	    else if( precent > 25 && precent <= 50)
 	    {
 				printk(KERN_INFO "System status module: gpio27 and gpio5 on");
-	      ledOn27 = false;
+
+				ledOn27 = false;
 	      ledOn5 = false;
-	      //led on
+
+				//led on
 	      gpio_set_value(gpioLED27, ledOn27);gpio_set_value(gpioLED5, ledOn5);
-	      //led off
+
+				//led off
 	      gpio_set_value(gpioLED6, true);gpio_set_value(gpioLED13, true);
 	    }
 	    else if( precent > 50 && precent <= 75)
@@ -183,11 +188,13 @@ void timerFun (unsigned long arg) {
 	    else if( precent > 75 && precent <= 100)
 	    {
 				printk(KERN_INFO "System status module: all gpio led on!");
-	      ledOn27 = false;
+
+				ledOn27 = false;
 	      ledOn5 = false;
 	      ledOn6 = false;
 	      ledOn13 = false;
-	      //led on
+
+				//led on
 	      gpio_set_value(gpioLED27, ledOn27);
 	      gpio_set_value(gpioLED5, ledOn5);
 	      gpio_set_value(gpioLED6, ledOn6);
@@ -319,6 +326,7 @@ static struct kobj_type my_kobj_type = {
 
 struct semaphore sem;
 
+//to arrays to map all the keyboard key , keymap as lower case chars, keymapShiftActivated as upper case chars.
 static const char* keymap[] = { "\0", "ESC", "1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "-", "=", "_BACKSPACE_", "_TAB_",
                         "q", "w", "e", "r", "t", "y", "u", "i", "o", "p", "[", "]", "_ENTER_", "_CTRL_", "a", "s", "d", "f",
                         "g", "h", "j", "k", "l", ";", "'", "`", "_SHIFT_", "\\", "z", "x", "c", "v", "b", "n", "m", ",", ".",
@@ -352,7 +360,7 @@ int keylogger_notify(struct notifier_block *nblock, unsigned long code, void *_p
         {
             //acquire lock to modify the global variable shiftKeyDepressed
             down(&sem);
-            if(param->down)
+            if(param->down)//param->down : do on keyPress
                 shiftKeyDepressed = 1;
             else
                 shiftKeyDepressed = 0;
@@ -364,7 +372,8 @@ int keylogger_notify(struct notifier_block *nblock, unsigned long code, void *_p
         {
             //acquire lock to read the global variable shiftKeyDepressed
             down(&sem);
-            //if "p" or "P" presses switching to memory/cpu state
+
+						//if "p" or "P" presses switching to memory/cpu state
             if(shiftKeyDepressed == 0)
             {
               if(keymap[param->value] == keymap[25])
@@ -429,8 +438,8 @@ static irq_handler_t irq_handler(unsigned int irq, void *dev_id, struct pt_regs 
 	// if to_run = 1  running user app to read and write to sysfs
 	if( to_run == 1)
 	{
-		to_run = 0;
-		onoff = true;
+		to_run = 0;// make user app to start read/write data to sysfs
+		onoff = true;// enable leds
 	}
 	else
 	{
@@ -450,9 +459,10 @@ static irq_handler_t irq_handler(unsigned int irq, void *dev_id, struct pt_regs 
 static int __init init_sys_status(void)
 {
   int err = -1;
-  int result = 42;
+  int result = 0;
 	int run = 0;
-  //keybot notifier init
+
+	//keybot notifier init
   register_keyboard_notifier(&keylogger_nb);
   printk(KERN_INFO "System status module: Registering the keylogger module with the keyboard notifier list\n");
   sema_init(&sem, 1);
@@ -477,7 +487,6 @@ static int __init init_sys_status(void)
   gpio_request(gpioButton, "button");       // Set up the gpioButton
   gpio_direction_input(gpioButton);        // Set the button GPIO to be an input
   gpio_set_debounce(gpioButton, 200);      // Debounce the button with a delay of 200ms
-  //gpio_export(gpioButton, false);          // Causes gpio115 to appear in /sys/class/gpio
 
   irqNumber = gpio_to_irq(gpioButton);
    printk(KERN_INFO "System status module: GPIO_TEST: The button is mapped to IRQ: %d\n", irqNumber);
@@ -492,10 +501,8 @@ static int __init init_sys_status(void)
   mykobj = kzalloc(sizeof(*mykobj),GFP_KERNEL);
   if(mykobj)
   {
-    //getting error from gcc try on device or repalce to init and add
-    //kobj_init(mykobj,&my_kobj_type);
-    kobject_init(mykobj,&my_kobj_type);
-    if(kobject_add(mykobj,NULL,"%s",STATUS_OBJECT_NAME))
+    kobject_init(mykobj,&my_kobj_type);//initialize the kobject
+    if(kobject_add(mykobj,NULL,"%s",STATUS_OBJECT_NAME))//adding the kobject to the sysfs entry
     {
       err = -1;
       printk(KERN_INFO "System status module: kobject_add() faild\n");
@@ -509,15 +516,17 @@ static int __init init_sys_status(void)
 
   //timer init
   init_timer (&myTimer);
-  myTimer.function = timerFun;
+  myTimer.function = timerFun;//telling the control block what function to activate
   myTimer.data = 0;
 
   my_set_timer(&myTimer);
   printk (KERN_INFO "System status module: timer added. \n");
 
   printk(KERN_INFO "System status module: Running run_user_app!!");
-  run =  run_user_app();
-  printk(KERN_INFO "System status module: run user app return: %d",run);
+
+	run =  run_user_app();//running user space app
+
+	printk(KERN_INFO "System status module: run user app return: %d",run);
 
 
   printk(KERN_INFO "System status module: init finished");
@@ -541,7 +550,7 @@ static void __exit cleanup_sys_status(void)
 
 	if(mykobj)
   {
-    kobject_put(mykobj);
+    kobject_put(mykobj);//decrease the kref of the kobject so cleanup will be called
     kfree(mykobj);
   }
   //free gpio
