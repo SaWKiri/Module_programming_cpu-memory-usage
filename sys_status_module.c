@@ -44,7 +44,7 @@
 #define TO_RUN_VALUE_ATT_NAME "to_run"
 #define STATUS_OBJECT_NAME "sys_status_module"
 
-#define SECONDS_COUNT 3
+#define SECONDS_COUNT 1
 
 /*
 * leds and button config
@@ -89,13 +89,12 @@ static int to_run = 0;
 */
 static bool to_show_cpu = 0; //0 - showing cpu precent on the led, 1- showing the memory usage on the led
 static int precent = 0;
-static bool onoff  = false; // set all led off or on (number of led on by precent)
+static bool onoff  = true; // set all led off or on (number of led on by precent)
 
 
 /*
 * running user application from kernel space
-* this should be calld from button press for now on init
-* it will be called
+* this would be called from init
 */
 static int run_user_app(void)
 {
@@ -127,23 +126,28 @@ void timerFun (unsigned long arg) {
     int tmp;
     i++;
     tmp = i;
-    printk (KERN_INFO "System status module: Called timer %d times\r\n", tmp);
-
+    //printk (KERN_INFO "System status module: Called timer %d times\r\n", tmp);
+		printk(KERN_INFO "System status Module: to show cpu = %d",to_show_cpu);
 		//choosing what precentage to show, cpu or memory
     if(to_show_cpu == 0)
     {
       precent = cpu;
-	    printk(KERN_INFO "System status module: show cpu");
+	    printk(KERN_INFO "System status Module: show cpu");
     }
     else
     {
     	precent = memory;
-	  	printk(KERN_INFO "System status module: show memory");
+	  	printk(KERN_INFO "System status Module: show memory");
     }
+
+		printk(KERN_INFO "System status module: onoff = %d",onoff);
+		printk(KERN_INFO "System status module: precent = %d",precent);
 
 		//if onoff is false the "display" is off -> all led off.
 		if(onoff == false)
 		{
+			printk(KERN_INFO "System status Module: LED Disabled");
+
 			gpio_set_value(gpioLED27, true);
 			gpio_set_value(gpioLED5, true);gpio_set_value(gpioLED6, true);gpio_set_value(gpioLED13, true);
 		}

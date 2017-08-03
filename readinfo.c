@@ -272,7 +272,7 @@ int main(int argc , char* argv[])
      write_cpu(cpu_usage_in_precentage);
 
    }
-    sleep(2);
+    sleep(1);
 
 
   }while(to_run == 0 || to_run == 1);
