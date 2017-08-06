@@ -154,6 +154,7 @@ void timerFun (unsigned long arg) {
 	    if(precent <= 25)
 	    {
 			   printk(KERN_INFO "System status module: gpio27 on");
+				 
 
 				 ledOn27 = false;
 				 //led on
