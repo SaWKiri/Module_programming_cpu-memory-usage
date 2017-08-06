@@ -44,6 +44,7 @@
 #define TO_RUN_VALUE_ATT_NAME "to_run"
 #define STATUS_OBJECT_NAME "sys_status_module"
 
+// define the timer activation in secound
 #define SECONDS_COUNT 1
 
 /*
@@ -69,7 +70,7 @@ static unsigned int numberPresses = 0;  //for information, store the number of B
 * timer setup
 */
 
-/* setup timer */
+/* setup timer struct for the timer block*/
 struct timer_list myTimer; //the struct of the timer setup
 int i;                     //counting how many times the timer callback function have been called
 
@@ -98,19 +99,15 @@ static bool onoff  = true; // set all led off or on (number of led on by precent
 */
 static int run_user_app(void)
 {
-  //struct subprocess_info *sub_info;
-	// /home/saw/Desktop/project/a.out
-  //  /home/saw/Desktop/AdvanceOS/lkp/project/a.out
-	// /home/pi/Desktop/project/a.out
-	// /home/pi/Desktop/project
-	char *argv[] = {"/home/saw/Desktop/project/readinfo", NULL}; //the path of the user program and its arguments
-  static char *envp[] = {"HOME=/","TERM=linux","PATH=/sbin:/bin:/usr/sbin:/usr/bin",NULL};
 
-  return call_usermodehelper(argv[0],argv,envp,UMH_WAIT_EXEC);
+	char *argv[] = {"/home/pi/Desktop/project/readinfo", NULL}; //the path of the user program and its arguments
+  static char *envp[] = {"HOME=/","TERM=linux","PATH=/sbin:/bin:/usr/sbin:/usr/bin",NULL};// initialize enviroment arguments
+
+  return call_usermodehelper(argv[0],argv,envp,UMH_WAIT_EXEC);// executes readinfo app
 }
 
 /*
-* Function to starts the timer
+* Function to starts the timer and set time to activate
 */
 static void my_set_timer(struct timer_list * mtimer)
 {
@@ -119,7 +116,7 @@ static void my_set_timer(struct timer_list * mtimer)
 }
 
 /*
-* timer interrupt sevice routine - executes timer action
+* timer interrupt sevice routine - executes timer action (timer callback)
 */
 void timerFun (unsigned long arg) {
 
@@ -327,10 +324,10 @@ static struct kobj_type my_kobj_type = {
 /*
 * keyboard notifier
 */
-
+// declaring semaphore lock for the keyboard
 struct semaphore sem;
 
-//to arrays to map all the keyboard key , keymap as lower case chars, keymapShiftActivated as upper case chars.
+//tow arrays to map all the keyboard key , "keymap" as lower case chars, k"eymapShiftActivated" as upper case chars.
 static const char* keymap[] = { "\0", "ESC", "1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "-", "=", "_BACKSPACE_", "_TAB_",
                         "q", "w", "e", "r", "t", "y", "u", "i", "o", "p", "[", "]", "_ENTER_", "_CTRL_", "a", "s", "d", "f",
                         "g", "h", "j", "k", "l", ";", "'", "`", "_SHIFT_", "\\", "z", "x", "c", "v", "b", "n", "m", ",", ".",
@@ -351,10 +348,13 @@ static const char* keymapShiftActivated[] =
                         "\0", "\0", "\0", "\0", "\0", "\0", "\0", "_ENTER_", "CTRL_", "/", "_PRTSCR_", "ALT", "\0", "_HOME_",
                         "_UP_", "_PGUP_", "_LEFT_", "_RIGHT_", "_END_", "_DOWN_", "_PGDN_", "_INSERT_", "_DEL_", "\0", "\0",
                         "\0", "\0", "\0", "\0", "\0", "_PAUSE_"};
-
+// helper variable - shit was pressed or not
 static int shiftKeyDepressed = 0;
-
-//notifier function - callback
+/*
+* notifier function - callback
+* check if shift was pressed and check if "p" key has been pressed
+* if "p" pressed switch the leds to display cpu/ram usage back and forth
+*/
 int keylogger_notify(struct notifier_block *nblock, unsigned long code, void *_param)
 {
     struct keyboard_notifier_param *param = _param;
@@ -385,7 +385,6 @@ int keylogger_notify(struct notifier_block *nblock, unsigned long code, void *_p
                 to_show_cpu = !to_show_cpu;
                 printk(KERN_INFO "System status module: P has been pressed");
               }
-                //printk(KERN_INFO "%s \n", keymap[param->value]);
             }
             else
             {
@@ -394,7 +393,6 @@ int keylogger_notify(struct notifier_block *nblock, unsigned long code, void *_p
                 to_show_cpu = !to_show_cpu;
                 printk(KERN_INFO "System status module: P has been pressed");
               }
-                //printk(KERN_INFO "%s \n", keymapShiftActivated[param->value]);
             }
             up(&sem);
         }
@@ -403,6 +401,7 @@ int keylogger_notify(struct notifier_block *nblock, unsigned long code, void *_p
     return NOTIFY_OK;
 }
 
+// init the keylogger_nb - assign the keyboard callback function
 static struct notifier_block keylogger_nb =
 {
     .notifier_call = keylogger_notify
@@ -415,10 +414,11 @@ static struct notifier_block keylogger_nb =
 */
 
 // function to prevent mechanical bouncing of the button
-static unsigned char debounce_button(void){
+static unsigned char debounce_button(void)
+{
 
 
-static unsigned long old_jiffies = 0; //last time we entered the function and return was true
+	static unsigned long old_jiffies = 0; //last time we entered the function and return was true
 
 	unsigned long diff = jiffies - old_jiffies; // time delta (in jiffies) before now and last time return was true
 
@@ -432,6 +432,11 @@ static unsigned long old_jiffies = 0; //last time we entered the function and re
 	return 1;
 }
 
+/*
+* every time gpio Button pressed this function will be called.
+* switching the state of the leds to on or off, if off also stop
+* user app readinfo from read and write to sysfs.
+*/
 static irq_handler_t irq_handler(unsigned int irq, void *dev_id, struct pt_regs *regs)
 {
 	//preventing button debounce
@@ -458,7 +463,8 @@ static irq_handler_t irq_handler(unsigned int irq, void *dev_id, struct pt_regs 
 
 
 /*
-* init
+* init - initialize all the module resource , registering to keyboard event starting timer
+* and running user app.
 */
 static int __init init_sys_status(void)
 {
@@ -540,7 +546,7 @@ static int __init init_sys_status(void)
 }
 
 /*
-*
+* Realse all the resouces of the module and removing the module from the kernel
 */
 static void __exit cleanup_sys_status(void)
 {
@@ -569,6 +575,7 @@ static void __exit cleanup_sys_status(void)
   gpio_free(gpioLED13);
 	printk(KERN_INFO "System status module: removed leds");
 
+	free_irq(irqNumber,NULL);
   gpio_free(gpioButton);
   printk(KERN_INFO "System status module: removed Button");
 
