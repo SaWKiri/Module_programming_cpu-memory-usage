@@ -48,14 +48,14 @@ installtion instruction:
 
    example:
 
-   saw@sawPC:~/Desktop/project$ make clean
+     saw@sawPC:~/Desktop/project$ make clean
 
-   terminal output should look like this:
+     terminal output should look like this:
 
-   make -C /lib/modules/4.10.0-26-generic/build M=/home/saw/Desktop/project clean
-   make[1]: Entering directory '/usr/src/linux-headers-4.10.0-26-generic'
-    CLEAN   /home/saw/Desktop/project/.tmp_versions
-    CLEAN   /home/saw/Desktop/project/Module.symvers
-   make[1]: Leaving directory '/usr/src/linux-headers-4.10.0-26-generic'
-   rm -f readinfo
-   sudo rmmod sys_status_module
+     make -C /lib/modules/4.10.0-26-generic/build M=/home/saw/Desktop/project clean
+     make[1]: Entering directory '/usr/src/linux-headers-4.10.0-26-generic'
+      CLEAN   /home/saw/Desktop/project/.tmp_versions
+      CLEAN   /home/saw/Desktop/project/Module.symvers
+     make[1]: Leaving directory '/usr/src/linux-headers-4.10.0-26-generic'
+     rm -f readinfo
+     sudo rmmod sys_status_module
