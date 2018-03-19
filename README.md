@@ -1,4 +1,6 @@
-# Linux Module
+# Linux Module - System CPU/RAM Usage
+
+This code demonstrate how to create a linux module.
 
 ## Requierments:
 
